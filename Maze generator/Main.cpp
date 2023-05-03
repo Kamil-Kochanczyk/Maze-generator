@@ -56,6 +56,18 @@ public:
 			throw std::runtime_error("Stack underflow");
 		}
 	}
+
+	std::vector<T> ToVector()
+	{
+		std::vector<T> result;
+
+		for (int i = 0; i <= top; i++)
+		{
+			result.push_back(stack[i]);
+		}
+
+		return result;
+	}
 };
 
 class UndirectedGraph
@@ -223,9 +235,11 @@ private:
 	bool displayTopWall;
 	sf::RectangleShape bottomWall;
 	bool displayBottomWall;
+	sf::CircleShape circle;
+	bool displayCircle;
 
 public:
-	GridCell(sf::RectangleShape& model) : displayLeftWall(true), displayRightWall(true), displayTopWall(true), displayBottomWall(true)
+	GridCell(sf::RectangleShape& model) : displayLeftWall(true), displayRightWall(true), displayTopWall(true), displayBottomWall(true), displayCircle(false)
 	{
 		rectangle.setFillColor(model.getFillColor());
 		rectangle.setSize(model.getSize());
@@ -289,6 +303,22 @@ private:
 		bottomWall.setPosition(recPosX, recPosY + recSizeY - (bottomWall.getSize().y / 2));
 	}
 
+	void SetUpCircle(sf::Color color)
+	{
+		float recPosX = rectangle.getPosition().x;
+		float recPosY = rectangle.getPosition().y;
+
+		float recHalfSizeX = rectangle.getSize().x / 2;
+		float recHalfSizeY = rectangle.getSize().y / 2;
+
+		float radius = 0.25f * rectangle.getSize().x;
+
+		circle.setRadius(radius);
+		circle.setOrigin(sf::Vector2f(radius, radius));
+		circle.setPosition(recPosX + recHalfSizeX, recPosY + recHalfSizeY);
+		circle.setFillColor(color);
+	}
+
 	friend class MazeGenerator;
 };
 
@@ -303,6 +333,9 @@ private:
 	sf::Vector2f mazeAreaPosition;
 	sf::Vector2f mazeAreaSize;
 	std::vector<GridCell> grid;
+	std::vector<int> solution;
+	int startCellIndex;
+	int endCellIndex;
 
 public:
 	MazeGenerator(int n, sf::RenderWindow& window) : n(n), window(window), graph(n * n)
@@ -320,16 +353,39 @@ public:
 	void GenerateMaze()
 	{
 		graph.CreateGridRepresentation();
-		//graph.Display();
-
-		window.clear();
-
 		SetUpGrid();
 		SetUpVerticesAndEdges();
 		SetUpWalls();
-		SetUpMaze();
+		solution = SetUpMaze();
+	}
+
+	void RegenerateMaze()
+	{
+		grid[startCellIndex].displayCircle = false;
+		grid[endCellIndex].displayCircle = false;
+
+		for (auto& gridCell : grid)
+		{
+			gridCell.displayLeftWall = true;
+			gridCell.displayRightWall = true;
+			gridCell.displayTopWall = true;
+			gridCell.displayBottomWall = true;
+		}
+
+		solution = SetUpMaze();
+	}
+	
+	void ShowMaze(bool showSolution)
+	{
+		window.clear();
 
 		DrawMaze();
+		DrawStartEnd();
+
+		if (showSolution)
+		{
+			DrawSolution(solution);
+		}
 
 		window.display();
 	}
@@ -401,6 +457,12 @@ private:
 			rightEdge.edge.setSize(horizontalEdgeDimensions);
 			topEdge.edge.setSize(verticalEdgeDimensions);
 			bottomEdge.edge.setSize(verticalEdgeDimensions);
+
+			sf::Color yellow = sf::Color::Yellow;
+			leftEdge.edge.setFillColor(yellow);
+			rightEdge.edge.setFillColor(yellow);
+			topEdge.edge.setFillColor(yellow);
+			bottomEdge.edge.setFillColor(yellow);
 
 			leftEdge.sourceLabel = i;
 			rightEdge.sourceLabel = i;
@@ -488,7 +550,7 @@ private:
 		}
 	}
 
-	void SetUpMaze()
+	std::vector<int> SetUpMaze()
 	{
 		Stack<int> stack;
 		std::vector<bool> visited(grid.size());
@@ -500,14 +562,20 @@ private:
 			lastCellIndex = rand() % grid.size();
 		}
 
-		grid[currentCellIndex].rectangle.setFillColor(sf::Color::Red);
-		window.draw(grid[currentCellIndex].rectangle);
+		startCellIndex = currentCellIndex;
+		endCellIndex = lastCellIndex;
 
-		grid[lastCellIndex].rectangle.setFillColor(sf::Color::Green);
-		window.draw(grid[lastCellIndex].rectangle);
+		grid[currentCellIndex].SetUpCircle(sf::Color::Red);
+		grid[currentCellIndex].displayCircle = true;
+
+		grid[lastCellIndex].SetUpCircle(sf::Color::Green);
+		grid[lastCellIndex].displayCircle = true;
 
 		visited[currentCellIndex] = true;
 		stack.Push(currentCellIndex);
+
+		bool foundDestination = false;
+		std::vector<int> solution;
 
 		while (!stack.IsEmpty())
 		{
@@ -564,10 +632,17 @@ private:
 					grid[randomNeighborIndex].displayBottomWall = false;
 				}
 
+				if (currentCellIndex == lastCellIndex)
+				{
+					solution = stack.ToVector();
+				}
+
 				visited[randomNeighborIndex] = true;
 				stack.Push(randomNeighborIndex);
 			}
 		}
+
+		return solution;
 	}
 
 	void DrawMaze()
@@ -595,6 +670,45 @@ private:
 			}
 		}
 	}
+
+	void DrawStartEnd()
+	{
+		for (auto& gridCell : grid)
+		{
+			if (gridCell.displayCircle)
+			{
+				window.draw(gridCell.circle);
+			}
+		}
+	}
+
+	void DrawSolution(std::vector<int> solution)
+	{
+		for (int i = 0; i < solution.size() - 1; i++)
+		{
+			GridCell currentGridCell = grid[solution[i]];
+
+			if (currentGridCell.vertex.leftEdge.destinationLabel == solution[i + 1])
+			{
+				window.draw(grid[solution[i]].vertex.leftEdge.edge);
+			}
+
+			if (currentGridCell.vertex.rightEdge.destinationLabel == solution[i + 1])
+			{
+				window.draw(grid[solution[i]].vertex.rightEdge.edge);
+			}
+
+			if (currentGridCell.vertex.topEdge.destinationLabel == solution[i + 1])
+			{
+				window.draw(grid[solution[i]].vertex.topEdge.edge);
+			}
+
+			if (currentGridCell.vertex.bottomEdge.destinationLabel == solution[i + 1])
+			{
+				window.draw(grid[solution[i]].vertex.bottomEdge.edge);
+			}
+		}
+	}
 };
 
 int main()
@@ -602,10 +716,15 @@ int main()
 	const unsigned int windowWidth = (unsigned int)(sf::VideoMode::getDesktopMode().width / 1.25);
 	const unsigned int windowHeight = (unsigned int)(sf::VideoMode::getDesktopMode().height / 1.25);
 	sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "First SFML Project", sf::Style::Default);
-	int n = 13;
+	int n = 20;
 	MazeGenerator mazeGenerator(n, window);
+	bool showSolution = false;
 
 	mazeGenerator.GenerateMaze();
+	mazeGenerator.ShowMaze(showSolution);
+
+	std::cout << "Press R to regenerate\n";
+	std::cout << "Press S to show/hide solution\n";
 
 	while (window.isOpen())
 	{
@@ -613,11 +732,24 @@ int main()
 
 		while (window.pollEvent(someEvent))
 		{
-			switch (someEvent.type)
+			if (someEvent.type == sf::Event::KeyPressed)
 			{
-			case sf::Event::Closed:
+				switch (someEvent.key.code)
+				{
+				case sf::Keyboard::Key::R:
+					showSolution = false;
+					mazeGenerator.RegenerateMaze();
+					mazeGenerator.ShowMaze(showSolution);
+					break;
+				case sf::Keyboard::Key::S:
+					showSolution = !showSolution;
+					mazeGenerator.ShowMaze(showSolution);
+					break;
+				}
+			}
+			else if (someEvent.type == sf::Event::Closed)
+			{
 				window.close();
-				break;
 			}
 		}
 	}
