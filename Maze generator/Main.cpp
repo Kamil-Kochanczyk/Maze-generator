@@ -1,5 +1,4 @@
 #include <iostream>
-#include <cmath>
 #include <SFML/Graphics.hpp>
 
 template <typename T>
@@ -75,10 +74,9 @@ class UndirectedGraph
 private:
 	int numberOfVertices;
 	std::vector<std::vector<int>> adjacencyMatrix;
-	int gridDimension;
 
 public:
-	UndirectedGraph(int numberOfVertices) : numberOfVertices(numberOfVertices), gridDimension(sqrt(numberOfVertices))
+	UndirectedGraph(int numberOfVertices) : numberOfVertices(numberOfVertices)
 	{
 		adjacencyMatrix.resize(numberOfVertices);
 
@@ -125,8 +123,20 @@ public:
 		}
 	}
 
-	void CreateGridRepresentation()
+	void Clear()
 	{
+		for (auto& row : adjacencyMatrix)
+		{
+			std::fill(row.begin(), row.end(), 0);
+		}
+	}
+
+	void ToGridRepresentation()
+	{
+		Clear();
+
+		int gridDimension = sqrt(numberOfVertices);
+
 		for (int i = 0; i < numberOfVertices; i++)
 		{
 			// Left edge
@@ -158,97 +168,113 @@ public:
 	friend class MazeGenerator;
 };
 
-class Edge
-{
-private:
-	int sourceLabel;
-	int destinationLabel;
-	sf::RectangleShape edge;
-
-public:
-	Edge() : sourceLabel(-1), destinationLabel(-1), edge()
-	{
-
-	}
-
-	friend class MazeGenerator;
-	friend class GridCell;
-	friend class Vertex;
-};
-
-class Vertex
-{
-private:
-	int label;
-	Edge leftEdge;
-	Edge rightEdge;
-	Edge topEdge;
-	Edge bottomEdge;
-
-public:
-	Vertex() : label(-1)
-	{
-
-	}
-
-	std::vector<int> GetNeighbors()
-	{
-		std::vector<int> neighbors;
-		
-		if (leftEdge.destinationLabel != -1)
-		{
-			neighbors.push_back(leftEdge.destinationLabel);
-		}
-
-		if (rightEdge.destinationLabel != -1)
-		{
-			neighbors.push_back(rightEdge.destinationLabel);
-		}
-
-		if (topEdge.destinationLabel != -1)
-		{
-			neighbors.push_back(topEdge.destinationLabel);
-		}
-
-		if (bottomEdge.destinationLabel != -1)
-		{
-			neighbors.push_back(bottomEdge.destinationLabel);
-		}
-
-		return neighbors;
-	}
-
-	friend class MazeGenerator;
-	friend class GridCell;
-};
-
 class GridCell
 {
+private:
+	class Edge
+	{
+	public:
+		int sourceLabel;
+		int destinationLabel;
+		sf::RectangleShape edge;
+
+	public:
+		Edge() : sourceLabel(-1), destinationLabel(-1), edge(sf::Vector2f(0, 0))
+		{
+
+		}
+	};
+
+	class Vertex
+	{
+	public:
+		int label;
+		Edge leftEdge;
+		Edge rightEdge;
+		Edge topEdge;
+		Edge bottomEdge;
+
+	public:
+		Vertex() : label(-1), leftEdge(), rightEdge(), topEdge(), bottomEdge()
+		{
+
+		}
+
+		std::vector<int> GetNeighbors()
+		{
+			std::vector<int> neighbors;
+
+			if (leftEdge.destinationLabel != -1)
+			{
+				neighbors.push_back(leftEdge.destinationLabel);
+			}
+
+			if (rightEdge.destinationLabel != -1)
+			{
+				neighbors.push_back(rightEdge.destinationLabel);
+			}
+
+			if (topEdge.destinationLabel != -1)
+			{
+				neighbors.push_back(topEdge.destinationLabel);
+			}
+
+			if (bottomEdge.destinationLabel != -1)
+			{
+				neighbors.push_back(bottomEdge.destinationLabel);
+			}
+
+			return neighbors;
+		}
+	};
+
 private:
 	sf::RectangleShape rectangle;
 	Vertex vertex;
 	sf::RectangleShape leftWall;
-	bool displayLeftWall;
 	sf::RectangleShape rightWall;
-	bool displayRightWall;
 	sf::RectangleShape topWall;
-	bool displayTopWall;
 	sf::RectangleShape bottomWall;
-	bool displayBottomWall;
 	sf::CircleShape circle;
+	bool displayLeftWall;
+	bool displayRightWall;
+	bool displayTopWall;
+	bool displayBottomWall;
 	bool displayCircle;
 
 public:
-	GridCell(sf::RectangleShape& model) : displayLeftWall(true), displayRightWall(true), displayTopWall(true), displayBottomWall(true), displayCircle(false)
+	GridCell(sf::RectangleShape& model) : rectangle(model.getSize()), 
+										  vertex(), 
+										  leftWall(sf::Vector2f(0, 0)), 
+										  rightWall(sf::Vector2f(0, 0)), 
+										  topWall(sf::Vector2f(0, 0)), 
+										  bottomWall(sf::Vector2f(0, 0)), 
+										  circle(0), 
+										  displayLeftWall(true), 
+										  displayRightWall(true), 
+										  displayTopWall(true), 
+										  displayBottomWall(true), 
+										  displayCircle(false)
 	{
 		rectangle.setFillColor(model.getFillColor());
-		rectangle.setSize(model.getSize());
 		rectangle.setPosition(model.getPosition());
+
+		SetUpVertex();
+		SetUpWalls();
+		SetUpCircle();
 	}
 
 private:
-	void SetEdgesPositions()
+	void SetUpVertex()
 	{
+		sf::Vector2f horizontalEdgeSize(rectangle.getSize().x, 0.05f * rectangle.getSize().y);
+		sf::Vector2f verticalEdgeSize(0.05f * rectangle.getSize().x, rectangle.getSize().y);
+
+		vertex.leftEdge.edge.setSize(horizontalEdgeSize);
+		vertex.rightEdge.edge.setSize(horizontalEdgeSize);
+		vertex.topEdge.edge.setSize(verticalEdgeSize);
+		vertex.bottomEdge.edge.setSize(verticalEdgeSize);
+
 		float recPosX = rectangle.getPosition().x;
 		float recPosY = rectangle.getPosition().y;
 
@@ -264,30 +290,16 @@ private:
 		vertex.bottomEdge.edge.setPosition(recPosX + recHalfSizeX - (vertex.bottomEdge.edge.getSize().x / 2), recPosY + recHalfSizeY);
 	}
 
-	void SetWallsSizes()
+	void SetUpWalls()
 	{
-		sf::Vector2f horizontalWallSize(vertex.leftEdge.edge.getSize());
-		sf::Vector2f verticalWallSize(vertex.topEdge.edge.getSize());
+		sf::Vector2f horizontalWallSize(rectangle.getSize().x, 0.05f * rectangle.getSize().y);
+		sf::Vector2f verticalWallSize(0.05f * rectangle.getSize().x, rectangle.getSize().y);
 
 		leftWall.setSize(verticalWallSize);
 		rightWall.setSize(verticalWallSize);
 		topWall.setSize(horizontalWallSize);
 		bottomWall.setSize(horizontalWallSize);
 
-		//unsigned int r = (unsigned int)(rand() % 256);
-		//unsigned int g = (unsigned int)(rand() % 256);
-		//unsigned int b = (unsigned int)(rand() % 256);
-
-		//sf::Color randomColor(r, g, b);
-
-		//leftWall.setFillColor(randomColor);
-		//rightWall.setFillColor(randomColor);
-		//topWall.setFillColor(randomColor);
-		//bottomWall.setFillColor(randomColor);
-	}
-
-	void SetWallsPositions()
-	{
 		float recPosX = rectangle.getPosition().x;
 		float recPosY = rectangle.getPosition().y;
 
@@ -301,9 +313,20 @@ private:
 		topWall.setPosition(recPosX, recPosY - (topWall.getSize().y / 2));
 
 		bottomWall.setPosition(recPosX, recPosY + recSizeY - (bottomWall.getSize().y / 2));
+
+		//unsigned int r = (unsigned int)(rand() % 256);
+		//unsigned int g = (unsigned int)(rand() % 256);
+		//unsigned int b = (unsigned int)(rand() % 256);
+
+		//sf::Color randomColor(r, g, b);
+
+		//leftWall.setFillColor(randomColor);
+		//rightWall.setFillColor(randomColor);
+		//topWall.setFillColor(randomColor);
+		//bottomWall.setFillColor(randomColor);
 	}
 
-	void SetUpCircle(sf::Color color)
+	void SetUpCircle()
 	{
 		float recPosX = rectangle.getPosition().x;
 		float recPosY = rectangle.getPosition().y;
@@ -316,7 +339,6 @@ private:
 		circle.setRadius(radius);
 		circle.setOrigin(sf::Vector2f(radius, radius));
 		circle.setPosition(recPosX + recHalfSizeX, recPosY + recHalfSizeY);
-		circle.setFillColor(color);
 	}
 
 	friend class MazeGenerator;
@@ -325,38 +347,39 @@ private:
 class MazeGenerator
 {
 private:
-	int n;
+	int gridDimension;
 	sf::RenderWindow& window;
 	int windowWidth;
 	int windowHeight;
-	UndirectedGraph graph;
-	sf::Vector2f mazeAreaPosition;
-	sf::Vector2f mazeAreaSize;
+	UndirectedGraph gridRepresentation;
+	sf::Vector2f gridSize;
+	sf::Vector2f gridPosition;
 	std::vector<GridCell> grid;
-	std::vector<int> solution;
 	int startCellIndex;
 	int endCellIndex;
+	std::vector<int> mazeSolution;
 
 public:
-	MazeGenerator(int n, sf::RenderWindow& window) : n(n), window(window), graph(n * n)
+	MazeGenerator(int n, sf::RenderWindow& window) : gridDimension(n), 
+													 window(window), 
+													 windowWidth(window.getSize().x), 
+													 windowHeight(window.getSize().y), 
+													 gridRepresentation(n * n), 
+													 gridSize(0.8f * windowHeight, 0.8f * windowHeight), 
+													 gridPosition(0.5f * (windowWidth - gridSize.x), 0.1f * windowHeight), 
+													 startCellIndex(-1), 
+													 endCellIndex(-1), 
+													 mazeSolution(0) 
 	{
-		windowWidth = window.getSize().x;
-		windowHeight = window.getSize().y;
-
-		sf::RectangleShape area(sf::Vector2f(0.8f * windowHeight, 0.8f * windowHeight));
-		mazeAreaSize = area.getSize();
-
-		area.setPosition(0.5f * (windowWidth - mazeAreaSize.x), 0.1f * windowHeight);
-		mazeAreaPosition = area.getPosition();
+		gridRepresentation.ToGridRepresentation();
 	}
 
 	void GenerateMaze()
 	{
-		graph.CreateGridRepresentation();
-		SetUpGrid();
-		SetUpVerticesAndEdges();
+		SetUpFoundation();
+		SetUpPaths();
 		SetUpWalls();
-		solution = SetUpMaze();
+		mazeSolution = SetUpMaze();
 	}
 
 	void RegenerateMaze()
@@ -372,7 +395,7 @@ public:
 			gridCell.displayBottomWall = true;
 		}
 
-		solution = SetUpMaze();
+		mazeSolution = SetUpMaze();
 	}
 	
 	void ShowMaze(bool showSolution)
@@ -380,44 +403,39 @@ public:
 		window.clear();
 
 		DrawMaze();
-		DrawStartEnd();
 
 		if (showSolution)
 		{
-			DrawSolution(solution);
+			DrawSolution();
 		}
 
 		window.display();
 	}
 
 private:
-	void SetUpGrid()
+	void SetUpFoundation()
 	{
-		srand(time(0));
+		sf::Vector2f gridCellSize = gridSize;
+		gridCellSize.x /= gridDimension;
+		gridCellSize.y /= gridDimension;
 
-		sf::Vector2f gridCellSize = mazeAreaSize;
-		gridCellSize.x /= n;
-		gridCellSize.y /= n;
+		sf::Vector2f gridCellPosition = gridPosition;
 
-		sf::Vector2f gridCellPosition = mazeAreaPosition;
+		sf::RectangleShape model;
+		model.setSize(gridCellSize);
 
-		for (int i = 0; i < n; i++)
+		for (int i = 0; i < gridDimension; i++)
 		{
-			gridCellPosition.x = mazeAreaPosition.x;
+			gridCellPosition.x = gridPosition.x;
 
-			for (int j = 0; j < n; j++)
+			for (int j = 0; j < gridDimension; j++)
 			{
-				sf::RectangleShape model;
-
-				model.setSize(gridCellSize);
 				model.setPosition(gridCellPosition);
 
 				unsigned int r = (unsigned int)(rand() % 256);
 				unsigned int g = (unsigned int)(rand() % 256);
 				unsigned int b = (unsigned int)(rand() % 256);
-
 				sf::Color randomColor(r, g, b);
-
 				model.setFillColor(randomColor);
 
 				grid.push_back(GridCell(model));
@@ -429,7 +447,7 @@ private:
 		}
 	}
 
-	void DrawGrid()
+	void DrawFoundation()
 	{
 		for (auto& gridCell : grid)
 		{
@@ -437,74 +455,52 @@ private:
 		}
 	}
 
-	void SetUpVerticesAndEdges()
+	void SetUpPaths()
 	{
-		sf::Vector2f gridCellSize = mazeAreaSize;
-		gridCellSize.x /= n;
-		gridCellSize.y /= n;
-
-		sf::Vector2f horizontalEdgeDimensions(gridCellSize.x, 0.05f * gridCellSize.y);
-		sf::Vector2f verticalEdgeDimensions(0.05f * gridCellSize.x, gridCellSize.y);
-
 		for (int i = 0; i < grid.size(); i++)
 		{
-			Edge leftEdge;
-			Edge rightEdge;
-			Edge topEdge;
-			Edge bottomEdge;
+			grid[i].vertex.label = i;
 
-			leftEdge.edge.setSize(horizontalEdgeDimensions);
-			rightEdge.edge.setSize(horizontalEdgeDimensions);
-			topEdge.edge.setSize(verticalEdgeDimensions);
-			bottomEdge.edge.setSize(verticalEdgeDimensions);
+			grid[i].vertex.leftEdge.edge.setFillColor(sf::Color::Yellow);
+			grid[i].vertex.rightEdge.edge.setFillColor(sf::Color::Yellow);
+			grid[i].vertex.topEdge.edge.setFillColor(sf::Color::Yellow);
+			grid[i].vertex.bottomEdge.edge.setFillColor(sf::Color::Yellow);
 
-			sf::Color yellow = sf::Color::Yellow;
-			leftEdge.edge.setFillColor(yellow);
-			rightEdge.edge.setFillColor(yellow);
-			topEdge.edge.setFillColor(yellow);
-			bottomEdge.edge.setFillColor(yellow);
+			grid[i].vertex.leftEdge.sourceLabel = i;
+			grid[i].vertex.rightEdge.sourceLabel = i;
+			grid[i].vertex.topEdge.sourceLabel = i;
+			grid[i].vertex.bottomEdge.sourceLabel = i;
 
-			leftEdge.sourceLabel = i;
-			rightEdge.sourceLabel = i;
-			topEdge.sourceLabel = i;
-			bottomEdge.sourceLabel = i;
-
-			for (int j = 0; j < graph.numberOfVertices; j++)
+			for (int j = 0; j < gridRepresentation.numberOfVertices; j++)
 			{
-				if ((i - 1 >= 0) && (graph.adjacencyMatrix[i][i - 1] == 1))
+				// Left neighbor
+				if ((i - 1 >= 0) && (gridRepresentation.adjacencyMatrix[i][i - 1] == 1))
 				{
-					leftEdge.destinationLabel = i - 1;
+					grid[i].vertex.leftEdge.destinationLabel = i - 1;
 				}
 
-				if ((i + 1 < graph.numberOfVertices) && (graph.adjacencyMatrix[i][i + 1] == 1))
+				// Right neighbor
+				if ((i + 1 < gridRepresentation.numberOfVertices) && (gridRepresentation.adjacencyMatrix[i][i + 1] == 1))
 				{
-					rightEdge.destinationLabel = i + 1;
+					grid[i].vertex.rightEdge.destinationLabel = i + 1;
 				}
 
-				if ((i - graph.gridDimension >= 0) && (graph.adjacencyMatrix[i][i - graph.gridDimension] == 1))
+				// Top neighbor
+				if ((i - gridDimension >= 0) && (gridRepresentation.adjacencyMatrix[i][i - gridDimension] == 1))
 				{
-					topEdge.destinationLabel = i - graph.gridDimension;
+					grid[i].vertex.topEdge.destinationLabel = i - gridDimension;
 				}
 
-				if ((i + graph.gridDimension < graph.numberOfVertices) && (graph.adjacencyMatrix[i][i + graph.gridDimension] == 1))
+				// Bottom neighbor
+				if ((i + gridDimension < gridRepresentation.numberOfVertices) && (gridRepresentation.adjacencyMatrix[i][i + gridDimension] == 1))
 				{
-					bottomEdge.destinationLabel = i + graph.gridDimension;
+					grid[i].vertex.bottomEdge.destinationLabel = i + gridDimension;
 				}
 			}
-
-			Vertex vertex;
-			vertex.label = i;
-			vertex.leftEdge = leftEdge;
-			vertex.rightEdge = rightEdge;
-			vertex.topEdge = topEdge;
-			vertex.bottomEdge = bottomEdge;
-
-			grid[i].vertex = vertex;
-			grid[i].SetEdgesPositions();
 		}
 	}
 
-	void DrawVerticesAndEdges()
+	void DrawPaths()
 	{
 		for (auto& gridCell : grid)
 		{
@@ -534,8 +530,10 @@ private:
 	{
 		for (auto& gridCell : grid)
 		{
-			gridCell.SetWallsSizes();
-			gridCell.SetWallsPositions();
+			gridCell.leftWall.setFillColor(sf::Color::White);
+			gridCell.rightWall.setFillColor(sf::Color::White);
+			gridCell.topWall.setFillColor(sf::Color::White);
+			gridCell.bottomWall.setFillColor(sf::Color::White);
 		}
 	}
 
@@ -554,35 +552,37 @@ private:
 	{
 		Stack<int> stack;
 		std::vector<bool> visited(grid.size());
-		int currentCellIndex = rand() % grid.size();
-		int lastCellIndex = currentCellIndex;
+		std::vector<int> solution;
 
-		while (lastCellIndex == currentCellIndex)
+		startCellIndex = rand() % grid.size();
+		endCellIndex = startCellIndex;
+
+		while (endCellIndex == startCellIndex)
 		{
-			lastCellIndex = rand() % grid.size();
+			endCellIndex = rand() % grid.size();
 		}
 
-		startCellIndex = currentCellIndex;
-		endCellIndex = lastCellIndex;
+		grid[startCellIndex].circle.setFillColor(sf::Color::Red);
+		grid[startCellIndex].displayCircle = true;
 
-		grid[currentCellIndex].SetUpCircle(sf::Color::Red);
-		grid[currentCellIndex].displayCircle = true;
+		grid[endCellIndex].circle.setFillColor(sf::Color::Green);
+		grid[endCellIndex].displayCircle = true;
 
-		grid[lastCellIndex].SetUpCircle(sf::Color::Green);
-		grid[lastCellIndex].displayCircle = true;
-
-		visited[currentCellIndex] = true;
-		stack.Push(currentCellIndex);
-
-		bool foundDestination = false;
-		std::vector<int> solution;
+		visited[startCellIndex] = true;
+		stack.Push(startCellIndex);
 
 		while (!stack.IsEmpty())
 		{
-			currentCellIndex = stack.Pop();
-			GridCell currentCell = grid[currentCellIndex];
-			std::vector<int> neighbors = currentCell.vertex.GetNeighbors();
+			int currentCellIndex = stack.Pop();
+			std::vector<int> neighbors = grid[currentCellIndex].vertex.GetNeighbors();
 			std::vector<int> unvisitedNeighbors;
+
+			if (currentCellIndex == endCellIndex)
+			{
+				stack.Push(currentCellIndex);
+				solution = stack.ToVector();
+				stack.Pop();
+			}
 
 			for (auto& neighbor : neighbors)
 			{
@@ -595,46 +595,41 @@ private:
 			if (unvisitedNeighbors.size() > 0)
 			{
 				stack.Push(currentCellIndex);
-				int randomNeighborIndex = unvisitedNeighbors[rand() % unvisitedNeighbors.size()];
-				GridCell randomNeighbor = grid[randomNeighborIndex];
 
-				if (currentCell.vertex.leftEdge.destinationLabel == randomNeighbor.vertex.label)
+				int randomNeighborIndex = unvisitedNeighbors[rand() % unvisitedNeighbors.size()];
+
+				if (grid[currentCellIndex].vertex.leftEdge.destinationLabel == grid[randomNeighborIndex].vertex.label)
 				{
 					grid[currentCellIndex].displayLeftWall = false;
 				}
-				if (currentCell.vertex.rightEdge.destinationLabel == randomNeighbor.vertex.label)
+				if (grid[currentCellIndex].vertex.rightEdge.destinationLabel == grid[randomNeighborIndex].vertex.label)
 				{
 					grid[currentCellIndex].displayRightWall = false;
 				}
-				if (currentCell.vertex.topEdge.destinationLabel == randomNeighbor.vertex.label)
+				if (grid[currentCellIndex].vertex.topEdge.destinationLabel == grid[randomNeighborIndex].vertex.label)
 				{
 					grid[currentCellIndex].displayTopWall = false;
 				}
-				if (currentCell.vertex.bottomEdge.destinationLabel == randomNeighbor.vertex.label)
+				if (grid[currentCellIndex].vertex.bottomEdge.destinationLabel == grid[randomNeighborIndex].vertex.label)
 				{
 					grid[currentCellIndex].displayBottomWall = false;
 				}
 
-				if (randomNeighbor.vertex.leftEdge.destinationLabel == currentCell.vertex.label)
+				if (grid[randomNeighborIndex].vertex.leftEdge.destinationLabel == grid[currentCellIndex].vertex.label)
 				{
 					grid[randomNeighborIndex].displayLeftWall = false;
 				}
-				if (randomNeighbor.vertex.rightEdge.destinationLabel == currentCell.vertex.label)
+				if (grid[randomNeighborIndex].vertex.rightEdge.destinationLabel == grid[currentCellIndex].vertex.label)
 				{
 					grid[randomNeighborIndex].displayRightWall = false;
 				}
-				if (randomNeighbor.vertex.topEdge.destinationLabel == currentCell.vertex.label)
+				if (grid[randomNeighborIndex].vertex.topEdge.destinationLabel == grid[currentCellIndex].vertex.label)
 				{
 					grid[randomNeighborIndex].displayTopWall = false;
 				}
-				if (randomNeighbor.vertex.bottomEdge.destinationLabel == currentCell.vertex.label)
+				if (grid[randomNeighborIndex].vertex.bottomEdge.destinationLabel == grid[currentCellIndex].vertex.label)
 				{
 					grid[randomNeighborIndex].displayBottomWall = false;
-				}
-
-				if (currentCellIndex == lastCellIndex)
-				{
-					solution = stack.ToVector();
 				}
 
 				visited[randomNeighborIndex] = true;
@@ -668,13 +663,7 @@ private:
 			{
 				window.draw(gridCell.bottomWall);
 			}
-		}
-	}
 
-	void DrawStartEnd()
-	{
-		for (auto& gridCell : grid)
-		{
 			if (gridCell.displayCircle)
 			{
 				window.draw(gridCell.circle);
@@ -682,30 +671,28 @@ private:
 		}
 	}
 
-	void DrawSolution(std::vector<int> solution)
+	void DrawSolution()
 	{
-		for (int i = 0; i < solution.size() - 1; i++)
+		for (int i = 0; i < mazeSolution.size() - 1; i++)
 		{
-			GridCell currentGridCell = grid[solution[i]];
-
-			if (currentGridCell.vertex.leftEdge.destinationLabel == solution[i + 1])
+			if (grid[mazeSolution[i]].vertex.leftEdge.destinationLabel == mazeSolution[i + 1])
 			{
-				window.draw(grid[solution[i]].vertex.leftEdge.edge);
+				window.draw(grid[mazeSolution[i]].vertex.leftEdge.edge);
 			}
 
-			if (currentGridCell.vertex.rightEdge.destinationLabel == solution[i + 1])
+			if (grid[mazeSolution[i]].vertex.rightEdge.destinationLabel == mazeSolution[i + 1])
 			{
-				window.draw(grid[solution[i]].vertex.rightEdge.edge);
+				window.draw(grid[mazeSolution[i]].vertex.rightEdge.edge);
 			}
 
-			if (currentGridCell.vertex.topEdge.destinationLabel == solution[i + 1])
+			if (grid[mazeSolution[i]].vertex.topEdge.destinationLabel == mazeSolution[i + 1])
 			{
-				window.draw(grid[solution[i]].vertex.topEdge.edge);
+				window.draw(grid[mazeSolution[i]].vertex.topEdge.edge);
 			}
 
-			if (currentGridCell.vertex.bottomEdge.destinationLabel == solution[i + 1])
+			if (grid[mazeSolution[i]].vertex.bottomEdge.destinationLabel == mazeSolution[i + 1])
 			{
-				window.draw(grid[solution[i]].vertex.bottomEdge.edge);
+				window.draw(grid[mazeSolution[i]].vertex.bottomEdge.edge);
 			}
 		}
 	}
@@ -713,11 +700,12 @@ private:
 
 int main()
 {
+	srand(time(0));
 	const unsigned int windowWidth = (unsigned int)(sf::VideoMode::getDesktopMode().width / 1.25);
 	const unsigned int windowHeight = (unsigned int)(sf::VideoMode::getDesktopMode().height / 1.25);
-	sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "First SFML Project", sf::Style::Default);
-	int n = 20;
-	MazeGenerator mazeGenerator(n, window);
+	sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Maze Generator", sf::Style::Titlebar | sf::Style::Close);
+	int gridDimension = 20;	// gridDimension >= 2
+	MazeGenerator mazeGenerator(gridDimension, window);
 	bool showSolution = false;
 
 	mazeGenerator.GenerateMaze();
@@ -737,8 +725,8 @@ int main()
 				switch (someEvent.key.code)
 				{
 				case sf::Keyboard::Key::R:
-					showSolution = false;
 					mazeGenerator.RegenerateMaze();
+					showSolution = false;
 					mazeGenerator.ShowMaze(showSolution);
 					break;
 				case sf::Keyboard::Key::S:
