@@ -412,6 +412,22 @@ public:
 		window.display();
 	}
 
+	void Test()
+	{
+		window.clear();
+
+		SetUpFoundation();
+		DrawFoundation();
+
+		SetUpPaths();
+		DrawPaths();
+
+		SetUpWalls();
+		DrawWalls();
+
+		window.display();
+	}
+
 private:
 	void SetUpFoundation()
 	{
@@ -471,31 +487,28 @@ private:
 			grid[i].vertex.topEdge.sourceLabel = i;
 			grid[i].vertex.bottomEdge.sourceLabel = i;
 
-			for (int j = 0; j < gridRepresentation.numberOfVertices; j++)
+			// Left neighbor
+			if ((i - 1 >= 0) && (gridRepresentation.adjacencyMatrix[i][i - 1] == 1))
 			{
-				// Left neighbor
-				if ((i - 1 >= 0) && (gridRepresentation.adjacencyMatrix[i][i - 1] == 1))
-				{
-					grid[i].vertex.leftEdge.destinationLabel = i - 1;
-				}
+				grid[i].vertex.leftEdge.destinationLabel = i - 1;
+			}
 
-				// Right neighbor
-				if ((i + 1 < gridRepresentation.numberOfVertices) && (gridRepresentation.adjacencyMatrix[i][i + 1] == 1))
-				{
-					grid[i].vertex.rightEdge.destinationLabel = i + 1;
-				}
+			// Right neighbor
+			if ((i + 1 < gridRepresentation.numberOfVertices) && (gridRepresentation.adjacencyMatrix[i][i + 1] == 1))
+			{
+				grid[i].vertex.rightEdge.destinationLabel = i + 1;
+			}
 
-				// Top neighbor
-				if ((i - gridDimension >= 0) && (gridRepresentation.adjacencyMatrix[i][i - gridDimension] == 1))
-				{
-					grid[i].vertex.topEdge.destinationLabel = i - gridDimension;
-				}
+			// Top neighbor
+			if ((i - gridDimension >= 0) && (gridRepresentation.adjacencyMatrix[i][i - gridDimension] == 1))
+			{
+				grid[i].vertex.topEdge.destinationLabel = i - gridDimension;
+			}
 
-				// Bottom neighbor
-				if ((i + gridDimension < gridRepresentation.numberOfVertices) && (gridRepresentation.adjacencyMatrix[i][i + gridDimension] == 1))
-				{
-					grid[i].vertex.bottomEdge.destinationLabel = i + gridDimension;
-				}
+			// Bottom neighbor
+			if ((i + gridDimension < gridRepresentation.numberOfVertices) && (gridRepresentation.adjacencyMatrix[i][i + gridDimension] == 1))
+			{
+				grid[i].vertex.bottomEdge.destinationLabel = i + gridDimension;
 			}
 		}
 	}
@@ -744,3 +757,31 @@ int main()
 
 	return 0;
 }
+
+//int main()
+//{
+//	srand(time(0));
+//	const unsigned int windowWidth = (unsigned int)(sf::VideoMode::getDesktopMode().width / 1.25);
+//	const unsigned int windowHeight = (unsigned int)(sf::VideoMode::getDesktopMode().height / 1.25);
+//	sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Maze Generator", sf::Style::Titlebar | sf::Style::Close);
+//	int gridDimension = 20;	// gridDimension >= 2
+//	MazeGenerator mazeGenerator(gridDimension, window);
+//	bool showSolution = false;
+//
+//	mazeGenerator.Test();
+//
+//	while (window.isOpen())
+//	{
+//		sf::Event someEvent;
+//
+//		while (window.pollEvent(someEvent))
+//		{
+//			if (someEvent.type == sf::Event::Closed)
+//			{
+//				window.close();
+//			}
+//		}
+//	}
+//
+//	return 0;
+//}
