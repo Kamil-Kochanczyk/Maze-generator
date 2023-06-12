@@ -448,11 +448,12 @@ private:
 			{
 				model.setPosition(gridCellPosition);
 
-				unsigned int r = (unsigned int)(rand() % 256);
-				unsigned int g = (unsigned int)(rand() % 256);
-				unsigned int b = (unsigned int)(rand() % 256);
-				sf::Color randomColor(r, g, b);
-				model.setFillColor(randomColor);
+				//unsigned int r = (unsigned int)(rand() % 256);
+				//unsigned int g = (unsigned int)(rand() % 256);
+				//unsigned int b = (unsigned int)(rand() % 256);
+				//sf::Color randomColor(r, g, b);
+				//model.setFillColor(randomColor);
+				model.setFillColor(sf::Color::Black);
 
 				grid.push_back(GridCell(model));
 
@@ -717,7 +718,7 @@ int main()
 	const unsigned int windowWidth = (unsigned int)(sf::VideoMode::getDesktopMode().width / 1.25);
 	const unsigned int windowHeight = (unsigned int)(sf::VideoMode::getDesktopMode().height / 1.25);
 	sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Maze Generator", sf::Style::Titlebar | sf::Style::Close);
-	int gridDimension = 20;	// gridDimension >= 2
+	int gridDimension = 20;	// 2 <= gridDimension <= 34
 	MazeGenerator mazeGenerator(gridDimension, window);
 	bool showSolution = false;
 
@@ -764,7 +765,7 @@ int main()
 //	const unsigned int windowWidth = (unsigned int)(sf::VideoMode::getDesktopMode().width / 1.25);
 //	const unsigned int windowHeight = (unsigned int)(sf::VideoMode::getDesktopMode().height / 1.25);
 //	sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Maze Generator", sf::Style::Titlebar | sf::Style::Close);
-//	int gridDimension = 20;	// gridDimension >= 2
+//	int gridDimension = 3;	// gridDimension >= 2
 //	MazeGenerator mazeGenerator(gridDimension, window);
 //	bool showSolution = false;
 //
